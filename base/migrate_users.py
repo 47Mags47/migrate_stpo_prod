@@ -85,7 +85,6 @@ def migrate_users():
         with src.cursor() as cur:
             cur.execute("""
                 SELECT
-                    id,
                     first_name,
                     last_name,
                     middle_name,
@@ -99,31 +98,12 @@ def migrate_users():
                     created_at,
                     updated_at
                 FROM main__users
+                WHERE id NOT IN (1, 7, 17)
                 ORDER BY id
             """)
-
             users = cur.fetchall()
 
         log(f"Записей в источнике: {len(users)}")
-
-        # ============================================================
-        # Очищаем target, но сохраняем id=1 и id=2
-        # ============================================================
-
-        if TRUNCATE_TARGET:
-
-            with dst.cursor() as cur:
-
-                cur.execute("SET FOREIGN_KEY_CHECKS = 0")
-
-                cur.execute("""
-                    DELETE FROM base__users
-                    WHERE id NOT IN (1, 2)
-                """)
-
-                cur.execute("SET FOREIGN_KEY_CHECKS = 1")
-
-            log("Очищены пользователи, кроме id=1 и id=2")
 
         # ============================================================
         # Подготавливаем данные
@@ -134,29 +114,10 @@ def migrate_users():
         skipped_users = 0
 
         for user in users:
-
-            # --------------------------------------------------------
-            # Пользователей 1 и 2 из старой БД не переносим,
-            # поскольку они уже сохранены в новой БД.
-            # --------------------------------------------------------
-
-            if user["id"] in (1, 2):
-                skipped_users += 1
-                continue
-
             try:
-
-                email_verified_at = convert_datetime(
-                    user["email_verified_at"]
-                )
-
-                created_at = convert_datetime(
-                    user["created_at"]
-                )
-
-                updated_at = convert_datetime(
-                    user["updated_at"]
-                )
+                email_verified_at = convert_datetime(user["email_verified_at"])
+                created_at = convert_datetime(user["created_at"])
+                updated_at = convert_datetime(user["updated_at"])
 
             except ValueError as exc:
 
@@ -170,7 +131,6 @@ def migrate_users():
                 raise
 
             rows.append((
-                user["id"],
                 user["first_name"] or "",
                 user["last_name"],
                 user["middle_name"],
@@ -185,8 +145,6 @@ def migrate_users():
                 updated_at,
             ))
 
-        log(f"Пропущено id=1,2: {skipped_users}")
-
         # ============================================================
         # Вставка
         # ============================================================
@@ -194,7 +152,6 @@ def migrate_users():
         sql = """
             INSERT INTO base__users
                 (
-                    id,
                     first_name,
                     last_name,
                     middle_name,
@@ -221,13 +178,11 @@ def migrate_users():
                     %s,
                     %s,
                     %s,
-                    %s,
                     %s
                 )
         """
 
         if rows:
-
             with dst.cursor() as cur:
                 cur.executemany(sql, rows)
 

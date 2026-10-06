@@ -1,13 +1,13 @@
 # migrate_db/connect.py
 import os
 from contextlib import contextmanager
-
 import pymysql
 from pymysql.cursors import DictCursor
 
-
 # ------------------------------------------------------------------ env
 def load_env(path=".env"):
+    import os
+    
     if not os.path.exists(path):
         raise FileNotFoundError(f"Файл {path} не найден")
 
@@ -21,40 +21,42 @@ def load_env(path=".env"):
             key, value = line.split("=", 1)
             os.environ[key.strip()] = value.strip()
 
-
 load_env()
 
-USER = os.getenv("DB_USER")
-PASSWORD = os.getenv("DB_PASSWORD")
-HOST = os.getenv("DB_HOST")
-SOURCE_DB = os.getenv("DB_SOURCE")
-TARGET_DB = os.getenv("DB_TARGET")
-PORT = int(os.getenv("DB_PORT", 3306))
+DB_SOURCE_HOST      = os.getenv("DB_SOURCE_HOST", 'localhost')
+DB_SOURCE_PORT      = os.getenv("DB_SOURCE_PORT", 3306)
+DB_SOURCE_USER      = os.getenv("DB_SOURCE_USER")
+DB_SOURCE_PASSWORD  = os.getenv("DB_SOURCE_PASSWORD")
+DB_SOURCE_DATABASE  = os.getenv("DB_SOURCE_DATABASE")
 
+DB_TARGET_HOST      = os.getenv("DB_TARGET_HOST", 'localhost')
+DB_TARGET_PORT      = os.getenv("DB_TARGET_PORT", 3306)
+DB_TARGET_USER      = os.getenv("DB_TARGET_USER")
+DB_TARGET_PASSWORD  = os.getenv("DB_TARGET_PASSWORD")
+DB_TARGET_DATABASE  = os.getenv("DB_TARGET_DATABASE")
 
 # ------------------------------------------------------------------ configs
 SOURCE_CONFIG = dict(
-    host=HOST,
-    port=PORT,
-    user=USER,
-    password=PASSWORD,
-    database=SOURCE_DB,
+    host=DB_SOURCE_HOST,
+    port=DB_SOURCE_PORT,
+    user=DB_SOURCE_USER,
+    password=DB_SOURCE_PASSWORD,
+    database=DB_SOURCE_DATABASE,
     charset="utf8mb4",
     cursorclass=DictCursor,
     autocommit=False,
 )
 
 TARGET_CONFIG = dict(
-    host=HOST,
-    port=PORT,
-    user=USER,
-    password=PASSWORD,
-    database=TARGET_DB,
+    host=DB_TARGET_HOST,
+    port=DB_TARGET_PORT,
+    user=DB_TARGET_USER,
+    password=DB_TARGET_PASSWORD,
+    database=DB_TARGET_DATABASE,
     charset="utf8mb4",
     cursorclass=DictCursor,
     autocommit=False,
 )
-
 
 # ------------------------------------------------------------------ engines (lazy)
 def get_source_connection():
@@ -119,7 +121,7 @@ def check_connection(cfg, database):
                 )
                 tables_count = cur.fetchone()["cnt"]
 
-            print(f"✓ MySQL: {HOST}")
+            print(f"✓ MySQL: {cfg['host']}")
             print(f"✓ База: {current_database}")
             print(f"✓ Версия MySQL: {version}")
             print(f"✓ Таблиц: {tables_count}")
@@ -139,11 +141,11 @@ def check_connections():
     print("ПРОВЕРКА ПОДКЛЮЧЕНИЙ К БАЗАМ ДАННЫХ")
     print("=" * 60)
 
-    print("\n[1] STPO_prod")
-    source_ok = check_connection(SOURCE_CONFIG, SOURCE_DB)
+    print("\n[1] Источник")
+    source_ok = check_connection(SOURCE_CONFIG, DB_SOURCE_DATABASE)
 
-    print("\n[2] stpo")
-    target_ok = check_connection(TARGET_CONFIG, TARGET_DB)
+    print("\n[2] Целевой")
+    target_ok = check_connection(TARGET_CONFIG, DB_TARGET_DATABASE)
 
     print("\n" + "=" * 60)
     if source_ok and target_ok:

@@ -1,8 +1,9 @@
 import subprocess
 import sys
+import os
 from pathlib import Path
 
-PROJECT_DIR = Path("/var/www/STPO")
+PROJECT_DIR = Path(os.getenv('TARGET_PATH'))
 
 def run_command(command):
     print(f"\n$ {' '.join(command)}")
